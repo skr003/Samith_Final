@@ -80,15 +80,23 @@ def main():
 
     violations = []
 
-    for item in resources:
-        if item["type"] == "storage":
-            analyze_storage(item, violations)
-        elif item["type"] == "vm":
-            analyze_vms(item, violations)
-        elif item["type"] == "iam":
-            analyze_iam(item, violations)
-        elif item["type"] == "db":
-            analyze_db(item, violations)
+for item in resources:
+    # Handle old CIS format (no type)
+    if "account" in item and "blobService" in item:
+        analyze_storage(item, violations)
+        continue
+
+    # Handle new PCI DSS format
+    itype = item.get("type")
+    if itype == "storage":
+        analyze_storage(item, violations)
+    elif itype == "vm":
+        analyze_vms(item, violations)
+    elif itype == "iam":
+        analyze_iam(item, violations)
+    elif itype == "db":
+        analyze_db(item, violations)
+
 
     with open("pci_dss_report.json", "w") as f:
         json.dump(violations, f, indent=2)
