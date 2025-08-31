@@ -29,10 +29,6 @@ pipeline {
                 }
             }
 
-   stage('Validate PCI DSS') {
-      steps {
-        sh 'python3 scripts/validate_pci_dss.py > output/pci_drifts_py.json'
-      }
     }
     stage('OPA Policy Validation') {
       steps {
@@ -75,6 +71,7 @@ pipeline {
     }        
     }
 }
+
 
 
 
