@@ -1,6 +1,15 @@
 # scripts/analyze_pcidss.py
 import json
 
+def analyze_storage_accounts():
+    try:
+        with open('output/azure.json', 'r') as f:
+            all_storage_data = json.load(f)
+    except FileNotFoundError:
+        return []
+
+    violations = []
+    
 def analyze_storage(data, violations):
     acc = data.get("account", {})
     rid = acc.get("id")
