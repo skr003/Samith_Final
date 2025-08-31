@@ -33,6 +33,7 @@ pipeline {
       steps {
         sh 'python3 scripts/validate_pci_dss.py > output/pci_dss_drifts.json'
       }
+    }
                
     stage('OPA Policy Validation') {
       steps {
@@ -75,13 +76,3 @@ pipeline {
     }        
     }
 }
-
-
-
-
-
-
-
-
-
-
