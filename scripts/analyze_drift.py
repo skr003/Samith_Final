@@ -186,10 +186,17 @@ def analyze_pci_dss():
 def main():
     violations = analyze_pci_dss()
 
+    if not violations:
+        print("[DEBUG] No violations found. Dumping parsed resources for inspection...")
+        with open("output/azure.json", "r") as f:
+            data = json.load(f)
+            print(json.dumps(data[:3], indent=2))  # show first 3 entries
+
     with open("pci_dss_report.json", "w") as f:
         json.dump(violations, f, indent=2)
 
     print(f"PCI DSS analysis complete. Found {len(violations)} total violations.")
+
 
 
 if __name__ == "__main__":
