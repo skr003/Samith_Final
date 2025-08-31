@@ -29,21 +29,21 @@ pipeline {
                 }
             }
 
-   stage('Validate CIS') {
+   stage('Validate PCI') {
       steps {
-        sh 'python3 scripts/validate_cis.py > output/cis_drifts_py.json'
+        sh 'python3 scripts/validate_pci_dss.py > output/pci_drifts_py.json'
       }
     }
     stage('OPA Policy Validation') {
       steps {
-        sh 'opa test policy/azure/cis.rego'
-        sh 'opa eval --input output/azure.json --data policy/azure/cis.rego "data.azure.cis.fileshares.deny"'
+        sh 'opa test policy/azure/pci_dss.rego'
+        sh 'opa eval --input output/azure.json --data policy/azure/pci_dss.rego "data.azure.pci_dss.fileshares.deny"'
       }  
     }
         
-        stage('Analyze for CIS Benchmark Drift') {
+        stage('Analyze for PCI_DSS Benchmark Drift') {
             steps {
-                echo "Analyzing infrastructure state against CIS benchmarks..."
+                echo "Analyzing infrastructure state against PCI_DSS benchmarks..."
                 sh 'python3 ./scripts/analyze_drift.py'
                 // Archive the drift report for auditing
                 archiveArtifacts artifacts: 'drift_report.json'
@@ -65,9 +65,9 @@ pipeline {
       steps {
         sh '''
           # Set variables - REPLACE WITH YOUR ACTUAL STORAGE KEY
-          STORAGE_ACCOUNT="pramstore"
+          STORAGE_ACCOUNT="reportingpcidss25655"
           CONTAINER="reports"
-          STORAGE_ACCOUNT_KEY="Jwq7OewQuAyapJSnFilwqKVEg1SEqyVBO9XiElPgA7xqWQTekTsHnUDQhZkwwsvBFdQxfac22h+u+ASth14AvA=="
+          STORAGE_ACCOUNT_KEY="pUsU+U4ZVzYx5jVJAyiEXeVIhgel/4iGxqYl+cY1WSJI5NKsvlbYN5Si9NXHr8TKQTB92BHvTH64+AStjLZLuQ=="
           
           # Check if files exist
           if [ ! -f drift_report.json ]; then echo "Error: drift_report.json not found"; exit 1; fi
@@ -85,6 +85,7 @@ pipeline {
     }        
     }
 }
+
 
 
 
