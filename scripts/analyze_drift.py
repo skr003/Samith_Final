@@ -1,203 +1,99 @@
-# scripts/analyze_pci_dss.py
+# scripts/analyze_drift_manual.py
 import json
 
-
-def analyze_pci_dss():
+def analyze_storage_accounts():
     """
-    Manually checks Azure resources against PCI DSS v4.0 controls:
-    - Storage
-    - Virtual Machines (VMs)
-    - Identity & Access Management (IAM)
-    - Databases
+    Manually checks storage accounts against CIS v4.0.0 Section 10 controls.
+    This version includes robust checks for None/null values from the Azure API.
     """
-
     try:
-        with open("output/azure.json", "r") as f:
-            all_resources = json.load(f)
+        with open('output/azure.json', 'r') as f:
+            all_storage_data = json.load(f)
     except FileNotFoundError:
         return []
 
     violations = []
 
-    for res in all_resources:
-        rtype = res.get("type")
+    for storage_data in all_storage_data:
+        acc = storage_data.get('account', {})
+        blob_svc = storage_data.get('blobService', {})
+        file_svc = storage_data.get('fileService', {})
+        
+        # Skip if essential data is missing
+        if not all([acc, blob_svc, file_svc]):
+            continue
 
-        # -------------------
-        # Storage checks
-        # -------------------
-        if rtype == "storage":
-            acc = res.get("account", {})
-            file_svc = res.get("fileService", {})
+        resource_id = acc.get('id')
+        if not resource_id:
+            continue
 
-            rid = acc.get("id", res.get("name", "UnknownStorage"))
+        # --- 10.3 Storage Account General Checks ---
+        if acc.get('allowSharedKeyAccess', True):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.1.3", "description": "Storage Account: 'Allow storage account key access' should be 'Disabled'."})
+        
+        if acc.get('publicNetworkAccess') != 'Disabled':
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.2.2", "description": "Storage Account: 'Public Network Access' should be 'Disabled'."})
+        
+        network_acls = acc.get('networkAcls') or {}
+        if network_acls.get('defaultAction') != 'Deny':
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.2.3", "description": "Storage Account: Default network access rule should be 'Deny'."})
+        
+        if not acc.get('defaultToOAuthAuthentication', False):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.3.1", "description": "Storage Account: 'Default to Microsoft Entra authorization' should be 'Enabled'."})
+        
+        if not acc.get('supportsHttpsTrafficOnly', False):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.4", "description": "Storage Account: 'Secure transfer required' should be 'Enabled'."})
+        
+        if "AzureServices" not in (network_acls.get('bypass') or ''):
+             violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.5", "description": "Storage Account: 'Allow trusted Microsoft services' should be enabled if network rules are set."})
+        
+        if acc.get('minimumTlsVersion') != 'TLS1_2':
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.7", "description": "Storage Account: Minimum TLS version should be '1.2'."})
+        
+        if acc.get('allowCrossTenantReplication', True):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.8", "description": "Storage Account: 'Cross Tenant Replication' should not be enabled."})
+        
+        if acc.get('allowBlobPublicAccess', True):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.9", "description": "Storage Account: 'Allow Blob Anonymous Access' should be 'Disabled'."})
+        
+        sku = acc.get('sku') or {}
+        if sku.get('name') not in ['Standard_GRS', 'Standard_GZRS']:
+             violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.12", "description": "Storage Account: Redundancy on critical accounts should be 'geo-redundant storage (GRS)'."})
 
-            # Req 1: Restrict network access
-            if acc.get("networkAcls") is None:
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-1-Storage",
-                    "description": "Storage: No NSG/firewall restrictions."
-                })
+        # --- 10.2 Azure Blob Storage Checks ---
+        delete_retention_policy = blob_svc.get('deleteRetentionPolicy') or {}
+        if not delete_retention_policy.get('enabled', False):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.2.1", "description": "Blob Storage: Soft delete for blobs should be enabled."})
+        
+        if not blob_svc.get('isVersioningEnabled', False):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.2.2", "description": "Blob Storage: 'Versioning' should be 'Enabled'."})
+        
+        container_delete_policy = blob_svc.get('containerDeleteRetentionPolicy') or {}
+        if not container_delete_policy.get('enabled', False):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.3.6-Container", "description": "Blob Storage: Soft delete for containers should be enabled."})
 
-            # Req 3: Encryption at rest
-            if not acc.get("encryption", {}).get("services"):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-3-Storage",
-                    "description": "Storage: Encryption at rest not enforced."
-                })
-
-            # Req 7: Access control
-            if not acc.get("identity"):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-7-Storage",
-                    "description": "Storage: RBAC not enabled."
-                })
-
-            # Req 10: Logging
-            if not file_svc.get("logging", {}):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-10-Storage",
-                    "description": "Storage: Logging not enabled."
-                })
-
-        # -------------------
-        # VM checks
-        # -------------------
-        elif rtype == "vm":
-            vm = res.get("vm", {})
-            diag = res.get("diagnostics", {})
-
-            rid = vm.get("id", vm.get("name", "UnknownVM"))
-
-            # Req 6: Patch/vulnerability
-            if not vm.get("osProfile", {}).get("windowsConfiguration", {}).get("patchSettings", {}):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-6-VM",
-                    "description": "VM: Auto patching not enabled."
-                })
-
-            # Req 1 & 7: Restrict inbound traffic
-            if not vm.get("networkProfile", {}).get("networkInterfaces"):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-1-VM",
-                    "description": "VM: No NSG/network interface restrictions."
-                })
-
-            # Req 3: Disk encryption
-            if not vm.get("storageProfile", {}).get("osDisk", {}).get("encryptionSettings"):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-3-VM",
-                    "description": "VM: Disks not encrypted."
-                })
-
-            # Req 10: Logging
-            if not diag.get("bootDiagnostics"):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-10-VM",
-                    "description": "VM: Diagnostics/logging not enabled."
-                })
-
-        # -------------------
-        # IAM checks
-        # -------------------
-        elif rtype == "iam":
-            user = res.get("user", {})
-            upn = user.get("userPrincipalName", user.get("name", "UnknownUser"))
-
-            # Req 7: Role-based access
-            if not res.get("roleAssignments"):
-                violations.append({
-                    "resourceId": upn,
-                    "ruleId": "PCI-7-IAM",
-                    "description": f"IAM: User {upn} has no RBAC roles."
-                })
-
-            # Req 8: MFA
-            if not user.get("mfaEnabled", False):
-                violations.append({
-                    "resourceId": upn,
-                    "ruleId": "PCI-8-IAM",
-                    "description": f"IAM: User {upn} does not have MFA enabled."
-                })
-
-            # Req 7/8: Access review
-            if user.get("isDeprecated", False):
-                violations.append({
-                    "resourceId": upn,
-                    "ruleId": "PCI-7-8-IAM",
-                    "description": f"IAM: Deprecated user {upn} still active."
-                })
-
-            # Req 8: Password policy
-            if not user.get("passwordPolicyCompliant", False):
-                violations.append({
-                    "resourceId": upn,
-                    "ruleId": "PCI-8-IAM",
-                    "description": f"IAM: User {upn} password policy not compliant."
-                })
-
-        # -------------------
-        # Database checks
-        # -------------------
-        elif rtype == "database":
-            db = res.get("db", {})
-            rid = db.get("id", db.get("name", "UnknownDB"))
-
-            # Req 3 & 4: Encryption
-            if not db.get("encryption", {}).get("enabled", False):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-3-DB",
-                    "description": "DB: Encryption at rest not enabled."
-                })
-            if not db.get("sslEnforced", False):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-4-DB",
-                    "description": "DB: SSL/TLS not enforced for transit."
-                })
-
-            # Req 7: Access controls
-            if not db.get("authorizedUsers"):
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-7-DB",
-                    "description": "DB: No access control defined."
-                })
-
-            # Req 10: Activity monitoring
-            if not res.get("auditing", {}).get("state") == "Enabled":
-                violations.append({
-                    "resourceId": rid,
-                    "ruleId": "PCI-10-DB",
-                    "description": "DB: Auditing not enabled."
-                })
+        # --- 10.1 Azure Files Checks ---
+        share_delete_policy = file_svc.get('shareDeleteRetentionPolicy') or {}
+        if not share_delete_policy.get('enabled', False):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.1.1", "description": "Azure Files: Soft delete for Azure File Shares should be enabled."})
+        
+        protocol_settings = file_svc.get('protocolSettings') or {}
+        smb_settings = protocol_settings.get('smb') or {}
+        if "SMB3.1.1" not in (smb_settings.get('versions') or ''):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.1.2", "description": "Azure Files: 'SMB protocol version' should be 'SMB 3.1.1' or higher."})
+        
+        if "AES-256-GCM" not in (smb_settings.get('channelEncryption') or ''):
+            violations.append({"resourceId": resource_id, "ruleId": "CIS-10.1.3", "description": "Azure Files: 'SMB channel encryption' should be 'AES-256-GCM' or higher."})
 
     return violations
 
-
 def main():
-    violations = analyze_pci_dss()
+    all_violations = analyze_storage_accounts()
 
-    if not violations:
-        print("[DEBUG] No violations found. Dumping parsed resources for inspection...")
-        with open("output/azure.json", "r") as f:
-            data = json.load(f)
-            print(json.dumps(data[:3], indent=2))  # show first 3 entries
+    with open('drift_report.json', 'w') as f:
+        json.dump(all_violations, f, indent=2)
 
-    with open("pci_dss_report.json", "w") as f:
-        json.dump(violations, f, indent=2)
-
-    print(f"PCI DSS analysis complete. Found {len(violations)} total violations.")
-
-
+    print(f"Manual storage analysis complete. Found {len(all_violations)} total violations.")
 
 if __name__ == "__main__":
     main()
