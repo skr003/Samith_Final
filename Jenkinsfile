@@ -28,8 +28,6 @@ pipeline {
                     archiveArtifacts artifacts: 'output/*.json'
                 }
             }
-
-    }
     stage('OPA Policy Validation') {
       steps {
         sh 'opa test policy/azure/pci_dss.rego'
@@ -71,6 +69,7 @@ pipeline {
     }        
     }
 }
+
 
 
 
