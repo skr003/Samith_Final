@@ -38,7 +38,7 @@ pipeline {
         stage('Analyze for PCI_DSS Benchmark Drift') {
             steps {
                 echo "Analyzing infrastructure state against PCI_DSS benchmarks..."
-                sh 'python3 ./scripts/analyze_drift.py'
+                sh 'python3 ./scripts/validate_pci_dss.py'
                 // Archive the drift report for auditing
                 archiveArtifacts artifacts: 'drift_report.json'
                 sh 'cat drift_report.json'
@@ -69,6 +69,7 @@ pipeline {
     }        
     }
 }
+
 
 
 
