@@ -72,36 +72,35 @@ def analyze_db(data, violations):
 
 def main():
     try:
-        with open("output/azure.json", "r") as f:
+        with open("output/azure_pcidss.json", "r") as f:
             resources = json.load(f)
     except FileNotFoundError:
-        print("No PCI DSS data file found.")
+        print("No PCI DSS data file found (azure_pcidss.json). Did you run the collector script?")
         return
 
     violations = []
 
-for item in resources:
-    # Handle old CIS format (no type)
-    if "account" in item and "blobService" in item:
-        analyze_storage(item, violations)
-        continue
+    for item in resources:
+        # Backward-compatible: old CIS storage JSON has no "type"
+        if "account" in item and "blobService" in item:
+            analyze_storage(item, violations)
+            continue
 
-    # Handle new PCI DSS format
-    itype = item.get("type")
-    if itype == "storage":
-        analyze_storage(item, violations)
-    elif itype == "vm":
-        analyze_vms(item, violations)
-    elif itype == "iam":
-        analyze_iam(item, violations)
-    elif itype == "db":
-        analyze_db(item, violations)
-
+        itype = item.get("type")
+        if itype == "storage":
+            analyze_storage(item, violations)
+        elif itype == "vm":
+            analyze_vms(item, violations)
+        elif itype == "iam":
+            analyze_iam(item, violations)
+        elif itype == "db":
+            analyze_db(item, violations)
 
     with open("pci_dss_report.json", "w") as f:
         json.dump(violations, f, indent=2)
 
     print(f"PCI DSS analysis complete. Found {len(violations)} violations.")
+
 
 if __name__ == "__main__":
     main()
