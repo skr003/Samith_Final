@@ -1,4 +1,4 @@
-# scripts/analyze_pcidss.py
+# scripts/analyze_drift.py
 import json
 
 def analyze_storage(data, violations):
@@ -72,10 +72,10 @@ def analyze_db(data, violations):
 
 def main():
     try:
-        with open("output/azure_pcidss.json", "r") as f:
+        with open("output/azure.json", "r") as f:
             resources = json.load(f)
     except FileNotFoundError:
-        print("No PCI DSS data file found (azure_pcidss.json). Did you run the collector script?")
+        print("No PCI DSS data file found (azure.json). Did you run the collector script?")
         return
 
     violations = []
