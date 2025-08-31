@@ -51,16 +51,6 @@ pipeline {
             }
         }
 
-        stage('Generate Remediation Script') {
-            steps {
-                echo "Generating Azure CLI remediation script..."
-                sh 'python3 ./scripts/generate_remediation.py'
-                // Archive the generated script
-                archiveArtifacts artifacts: 'remediate.sh'
-                sh 'cat remediate.sh'
-            }
-        }
-
     stage('Upload Reports to Azure Storage') {
       steps {
         sh '''
@@ -85,6 +75,7 @@ pipeline {
     }        
     }
 }
+
 
 
 
