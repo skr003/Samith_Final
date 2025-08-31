@@ -137,27 +137,37 @@ def check_db(resource: Dict[str, Any], violations: List[str]):
     if not truthy(get_field(resource, ["auditingEnabled"])):
         add_violation(violations, f"PCI DSS Req 10 Violation: DB {name} auditing not enabled.")
 
-
-# -------------------
-# Main
-# -------------------
 def main():
     data = load_data(INPUT_FILE)
 
     violations: List[str] = []
 
-    for res in data.get("storage", []):
-        check_storage(res, violations)
-    for res in data.get("vms", []):
-        check_vm(res, violations)
-    for res in data.get("iam", []):
-        check_iam(res, violations)
-    for res in data.get("databases", []):
-        check_db(res, violations)
+    # If JSON is a list (as from query_azure_infra.sh)
+    if isinstance(data, list):
+        for res in data:
+            rtype = res.get("type")
+            if rtype == "storage":
+                check_storage(res, violations)
+            elif rtype == "vm":
+                check_vm(res, violations)
+            elif rtype == "iam":
+                check_iam(res, violations)
+            elif rtype == "database":
+                check_db(res, violations)
+
+    # If JSON is a dict with grouped arrays (older style)
+    elif isinstance(data, dict):
+        for res in data.get("storage", []):
+            check_storage(res, violations)
+        for res in data.get("vms", []):
+            check_vm(res, violations)
+        for res in data.get("iam", []):
+            check_iam(res, violations)
+        for res in data.get("databases", []):
+            check_db(res, violations)
 
     for v in violations:
         print(v)
-
 
 if __name__ == "__main__":
     main()
