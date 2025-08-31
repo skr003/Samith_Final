@@ -96,7 +96,7 @@ def main():
         elif itype == "db":
             analyze_db(item, violations)
 
-    with open("pci_dss_report.json", "w") as f:
+    with open("drift_report.json", "w") as f:
         json.dump(violations, f, indent=2)
 
     print(f"PCI DSS analysis complete. Found {len(violations)} violations.")
