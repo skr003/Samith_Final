@@ -1,15 +1,6 @@
 # scripts/analyze_pcidss.py
 import json
 
-def analyze_storage_accounts():
-    try:
-        with open('output/azure.json', 'r') as f:
-            all_storage_data = json.load(f)
-    except FileNotFoundError:
-        return []
-
-    violations = []
-    
 def analyze_storage(data, violations):
     acc = data.get("account", {})
     rid = acc.get("id")
@@ -81,7 +72,7 @@ def analyze_db(data, violations):
 
 def main():
     try:
-        with open("output/azure_pcidss.json", "r") as f:
+        with open("output/azure.json", "r") as f:
             resources = json.load(f)
     except FileNotFoundError:
         print("No PCI DSS data file found.")
