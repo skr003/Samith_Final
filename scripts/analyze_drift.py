@@ -1,74 +1,73 @@
 # scripts/analyze_drift.py
 import json
 
-def analyze_storage(data, violations):
+def record_check(results, rid, pciReq, desc, passed):
+    results.append({
+        "resourceId": rid,
+        "pciReq": pciReq,
+        "desc": desc,
+        "status": "PASS" if passed else "FAIL"
+    })
+
+def analyze_storage(data, results):
     acc = data.get("account", {})
     rid = acc.get("id")
     if not rid: return
 
     # PCI DSS Req 1 & 7: Restrict network access
-    if acc.get("publicNetworkAccess") != "Disabled":
-        violations.append({"resourceId": rid, "pciReq": "1,7", "desc": "Storage: Public network access should be disabled."})
+    passed = acc.get("publicNetworkAccess") == "Disabled"
+    record_check(results, rid, "1,7", "Storage: Public network access disabled", passed)
 
     # PCI DSS Req 3: Encrypt data at rest
-    if not acc.get("encryption", {}).get("services"):
-        violations.append({"resourceId": rid, "pciReq": "3", "desc": "Storage: Encryption at rest must be enabled."})
+    passed = bool(acc.get("encryption", {}).get("services"))
+    record_check(results, rid, "3", "Storage: Encryption at rest enabled", passed)
 
-    # PCI DSS Req 7: Access control
-    if acc.get("allowBlobPublicAccess", True):
-        violations.append({"resourceId": rid, "pciReq": "7", "desc": "Storage: Blob anonymous access should be disabled."})
+    # PCI DSS Req 7: Blob anonymous access
+    passed = not acc.get("allowBlobPublicAccess", True)
+    record_check(results, rid, "7", "Storage: Blob anonymous access disabled", passed)
 
     # PCI DSS Req 10: Logging
-    if not acc.get("diagnosticSettings"):
-        violations.append({"resourceId": rid, "pciReq": "10", "desc": "Storage: Access logging/diagnostics not enabled."})
+    passed = bool(acc.get("diagnosticSettings"))
+    record_check(results, rid, "10", "Storage: Diagnostics enabled", passed)
 
-def analyze_vms(data, violations):
+def analyze_vms(data, results):
     for vm in data.get("vms", []):
         rid = vm.get("id")
 
-        # PCI DSS Req 6: Patch & vulnerability management
-        if not vm.get("latestModelApplied", False):
-            violations.append({"resourceId": rid, "pciReq": "6", "desc": "VM: Not running latest OS model/patch."})
+        passed = vm.get("latestModelApplied", False)
+        record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed)
 
-        # PCI DSS Req 1,7: Restrict inbound traffic
-        if not vm.get("networkProfile"):
-            violations.append({"resourceId": rid, "pciReq": "1,7", "desc": "VM: Missing network profile/NSG restrictions."})
+        passed = bool(vm.get("networkProfile"))
+        record_check(results, rid, "1,7", "VM: NSG restrictions applied", passed)
 
-        # PCI DSS Req 3: Encrypt disks
-        if not vm.get("storageProfile", {}).get("osDisk", {}).get("encryptionSettings"):
-            violations.append({"resourceId": rid, "pciReq": "3", "desc": "VM: OS disk encryption not enabled."})
+        passed = bool(vm.get("storageProfile", {}).get("osDisk", {}).get("encryptionSettings"))
+        record_check(results, rid, "3", "VM: OS disk encryption enabled", passed)
 
-        # PCI DSS Req 10: Logging
-        if not vm.get("diagnosticsProfile"):
-            violations.append({"resourceId": rid, "pciReq": "10", "desc": "VM: Diagnostics logging not enabled."})
+        passed = bool(vm.get("diagnosticsProfile"))
+        record_check(results, rid, "10", "VM: Diagnostics logging enabled", passed)
 
-def analyze_iam(data, violations):
+def analyze_iam(data, results):
     for user in data.get("users", []):
         uid = user.get("id")
 
-        # PCI DSS Req 7: Least privilege
-        if user.get("userType") == "Guest":
-            violations.append({"resourceId": uid, "pciReq": "7", "desc": "IAM: Guest users must not have privileged roles."})
+        passed = user.get("userType") != "Guest"
+        record_check(results, uid, "7", "IAM: No guest users in privileged roles", passed)
 
-        # PCI DSS Req 8: MFA
-        if not user.get("mfaEnabled", False):
-            violations.append({"resourceId": uid, "pciReq": "8", "desc": "IAM: MFA not enforced for this user."})
+        passed = user.get("mfaEnabled", False)
+        record_check(results, uid, "8", "IAM: MFA enforced", passed)
 
-def analyze_db(data, violations):
+def analyze_db(data, results):
     for db in data.get("databases", []):
         rid = db.get("id")
 
-        # PCI DSS Req 3 & 4: Encryption at rest and in transit
-        if not db.get("encryptionProtector"):
-            violations.append({"resourceId": rid, "pciReq": "3,4", "desc": "DB: Transparent Data Encryption not enabled."})
+        passed = bool(db.get("encryptionProtector"))
+        record_check(results, rid, "3,4", "DB: Transparent Data Encryption enabled", passed)
 
-        # PCI DSS Req 7: Access control
-        if not db.get("containmentState"):
-            violations.append({"resourceId": rid, "pciReq": "7", "desc": "DB: Missing proper access containment."})
+        passed = bool(db.get("containmentState"))
+        record_check(results, rid, "7", "DB: Proper access containment", passed)
 
-        # PCI DSS Req 10: Monitoring
-        if not db.get("auditSettings"):
-            violations.append({"resourceId": rid, "pciReq": "10", "desc": "DB: Auditing/logging not enabled."})
+        passed = bool(db.get("auditSettings"))
+        record_check(results, rid, "10", "DB: Auditing/logging enabled", passed)
 
 def main():
     try:
@@ -78,29 +77,28 @@ def main():
         print("No PCI DSS data file found (azure.json). Did you run the collector script?")
         return
 
-    violations = []
+    results = []
 
     for item in resources:
-        # Backward-compatible: old CIS storage JSON has no "type"
         if "account" in item and "blobService" in item:
-            analyze_storage(item, violations)
+            analyze_storage(item, results)
             continue
 
         itype = item.get("type")
         if itype == "storage":
-            analyze_storage(item, violations)
+            analyze_storage(item, results)
         elif itype == "vm":
-            analyze_vms(item, violations)
+            analyze_vms(item, results)
         elif itype == "iam":
-            analyze_iam(item, violations)
+            analyze_iam(item, results)
         elif itype == "db":
-            analyze_db(item, violations)
+            analyze_db(item, results)
 
+    # Save JSON with both PASS and FAIL results
     with open("drift_report.json", "w") as f:
-        json.dump(violations, f, indent=2)
+        json.dump(results, f, indent=2)
 
-    print(f"PCI DSS analysis complete. Found {len(violations)} violations.")
-
+    print(f"PCI DSS analysis complete. Report saved to drift_report.json with {len(results)} total checks.")
 
 if __name__ == "__main__":
     main()
