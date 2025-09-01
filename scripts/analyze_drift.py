@@ -1,9 +1,15 @@
 # scripts/analyze_drift.py
 import json
 
+def get_name_from_id(rid: str) -> str:
+    """Extract the last part of the resourceId (actual resource name)."""
+    if not rid:
+        return ""
+    return rid.split("/")[-1]
+
 def record_check(results, rid, pciReq, desc, passed):
     results.append({
-        "resourceId": rid,
+        "resourceName": get_name_from_id(rid),
         "pciReq": pciReq,
         "desc": desc,
         "status": "PASS" if passed else "FAIL"
@@ -94,7 +100,7 @@ def main():
         elif itype == "db":
             analyze_db(item, results)
 
-    # Save JSON with both PASS and FAIL results
+    # Save JSON with PASS + FAIL checks
     with open("drift_report.json", "w") as f:
         json.dump(results, f, indent=2)
 
