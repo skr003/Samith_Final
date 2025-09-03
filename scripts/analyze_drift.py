@@ -33,8 +33,14 @@ def analyze_storage(data, results):
 
     # PCI DSS Req 3: Encryption at rest enabled
     val = acc.get("encryption", {}).get("services")
-    passed = bool(val)
-    record_check(results, rid, "3", "Storage: Encryption at rest enabled", passed, f"services={val}")
+    if val:
+        blob_status = val.get("blob", {}).get("enabled")
+        file_status = val.get("file", {}).get("enabled")
+        evidence = f"blob={blob_status}, file={file_status}"
+    else:
+        evidence = "services=None"
+    record_check(results, rid, "3", "Storage: Encryption at rest enabled", bool(val), evidence)
+
 
     # PCI DSS Req 10: Logging enabled
     diag = acc.get("diagnostics_profile", {}).get("boot_diagnostics", {}).get("enabled")
