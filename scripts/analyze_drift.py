@@ -12,7 +12,7 @@ def record_check(results, rid, pciReq, desc, passed, evidence=""):
         "resourceName": get_name_from_id(rid),
         "pciReq": pciReq,
         "desc": desc,
-        "status": "PASS" if passed else "FAIL"
+        "status": "PASS" if passed else "FAIL",
         "evidence": evidence
     })
 
