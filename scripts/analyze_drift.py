@@ -22,14 +22,9 @@ def analyze_storage(data, results):
     if not rid: return
 
     # PCI DSS Req 1 & 7: Restrict network access
-    #passed = acc.get("publicNetworkAccess") == "Disabled"
-    #record_check(results, rid, "1,7", "Storage: Public network access disabled", passed
-
-    # PCI DSS Req 1 & 7: Restrict network access
     val = acc.get("publicNetworkAccess")
     passed = val == "Disabled"
     record_check(results, rid, "1,7", "Storage: Public network access disabled", passed, f"publicNetworkAccess={val}")
-
 
     # PCI DSS Req 3: Encryption at rest enabled
     val = acc.get("encryption", {}).get("services")
@@ -47,19 +42,13 @@ def analyze_storage(data, results):
     passed = diag is True
     record_check(results, rid, "10", "Storage: Boot diagnostics enabled", passed, f"boot_diagnostics={diag}")
     
-    
-    
-    # PCI DSS Req 3: Encrypt data at rest
-    #passed = bool(acc.get("encryption", {}).get("services"))
-    #record_check(results, rid, "3", "Storage: Encryption at rest enabled", passed)
-
     # PCI DSS Req 7: Blob anonymous access
-    #passed = not acc.get("allowBlobPublicAccess", True)
-    #record_check(results, rid, "7", "Storage: Blob anonymous access disabled", passed)
+    val = acc.get("allowBlobPublicAccess", True)
+    passed = not val
+    evidence = f"allowBlobPublicAccess={val}"
+    record_check(results, rid, "7", "Storage: Blob anonymous access disabled", passed, evidence)
 
-    # PCI DSS Req 10: Logging
-    #passed = bool(acc.get("diagnosticSettings"))
-    #record_check(results, rid, "10", "Storage: Diagnostics enabled", passed)
+
 
 def analyze_vms(data, results):
     for vm in data.get("vms", []):
