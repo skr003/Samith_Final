@@ -76,16 +76,19 @@ def analyze_vms(data, results):
         record_check(results, rid, "10", "VM: Diagnostics logging enabled", passed,
                      f"diagnosticsProfile_present={bool(val)}")
 
-
 def analyze_iam(data, results):
     for user in data.get("users", []):
         uid = user.get("id")
 
-        passed = user.get("userType") != "Guest"
-        record_check(results, uid, "7", "IAM: No guest users in privileged roles", passed)
+        # PCI DSS Req 7: No guest users in privileged roles
+        val = user.get("userType")
+        passed = val != "Guest"
+        record_check(results, uid, "7", "IAM: No guest users in privileged roles", passed, f"userType={val}")
 
-        passed = user.get("mfaEnabled", False)
-        record_check(results, uid, "8", "IAM: MFA enforced", passed)
+        # PCI DSS Req 8: MFA enforced
+        val = user.get("mfaEnabled", False)
+        passed = bool(val)
+        record_check(results, uid, "8", "IAM: MFA enforced", passed, f"mfaEnabled={val}")
 
 def analyze_db(data, results):
     for db in data.get("databases", []):
