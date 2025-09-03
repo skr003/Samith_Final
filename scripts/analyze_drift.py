@@ -90,14 +90,23 @@ def analyze_db(data, results):
     for db in data.get("databases", []):
         rid = db.get("id")
 
-        passed = bool(db.get("encryptionProtector"))
-        record_check(results, rid, "3,4", "DB: Transparent Data Encryption enabled", passed)
+        # PCI DSS Req 3 & 4: Transparent Data Encryption enabled
+        val = db.get("encryptionProtector")
+        passed = bool(val)
+        record_check(results, rid, "3,4", "DB: Transparent Data Encryption enabled", passed,
+                     f"encryptionProtector_present={bool(val)}")
 
-        passed = bool(db.get("containmentState"))
-        record_check(results, rid, "7", "DB: Proper access containment", passed)
+        # PCI DSS Req 7: Proper access containment
+        val = db.get("containmentState")
+        passed = bool(val)
+        record_check(results, rid, "7", "DB: Proper access containment", passed,
+                     f"containmentState={val}")
 
-        passed = bool(db.get("auditSettings"))
-        record_check(results, rid, "10", "DB: Auditing/logging enabled", passed)
+        # PCI DSS Req 10: Auditing/logging enabled
+        val = db.get("auditSettings")
+        passed = bool(val)
+        record_check(results, rid, "10", "DB: Auditing/logging enabled", passed,
+                     f"auditSettings_present={bool(val)}")
 
 def main():
     try:
