@@ -36,35 +36,45 @@ def analyze_storage(data, results):
         evidence = "services=None"
     record_check(results, rid, "3", "Storage: Encryption at rest enabled", bool(val), evidence)
 
-
-    # PCI DSS Req 10: Logging enabled
-    diag = acc.get("diagnostics_profile", {}).get("boot_diagnostics", {}).get("enabled")
-    passed = diag is True
-    record_check(results, rid, "10", "Storage: Boot diagnostics enabled", passed, f"boot_diagnostics={diag}")
-    
     # PCI DSS Req 7: Blob anonymous access
     val = acc.get("allowBlobPublicAccess", True)
     passed = not val
     evidence = f"allowBlobPublicAccess={val}"
     record_check(results, rid, "7", "Storage: Blob anonymous access disabled", passed, evidence)
 
-
-
+    # PCI DSS Req 10: Logging enabled
+    diag = acc.get("diagnostics_profile", {}).get("boot_diagnostics", {}).get("enabled")
+    passed = diag is True
+    record_check(results, rid, "10", "Storage: Boot diagnostics enabled", passed, f"boot_diagnostics={diag}")
+    
 def analyze_vms(data, results):
     for vm in data.get("vms", []):
         rid = vm.get("id")
 
-        passed = vm.get("latestModelApplied", False)
-        record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed)
+        # PCI DSS Req 6: Latest OS model/patch applied
+        val = vm.get("latestModelApplied", False)
+        passed = bool(val)
+        record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed,
+                     f"latestModelApplied={val}")
 
-        passed = bool(vm.get("networkProfile"))
-        record_check(results, rid, "1,7", "VM: NSG restrictions applied", passed)
+        # PCI DSS Req 1 & 7: NSG restrictions applied
+        val = vm.get("networkProfile")
+        passed = bool(val)
+        record_check(results, rid, "1,7", "VM: NSG restrictions applied", passed,
+                     f"networkProfile_present={bool(val)}")
 
-        passed = bool(vm.get("storageProfile", {}).get("osDisk", {}).get("encryptionSettings"))
-        record_check(results, rid, "3", "VM: OS disk encryption enabled", passed)
+        # PCI DSS Req 3: OS disk encryption enabled
+        val = vm.get("storageProfile", {}).get("osDisk", {}).get("encryptionSettings")
+        passed = bool(val)
+        record_check(results, rid, "3", "VM: OS disk encryption enabled", passed,
+                     f"encryptionSettings_present={bool(val)}")
 
-        passed = bool(vm.get("diagnosticsProfile"))
-        record_check(results, rid, "10", "VM: Diagnostics logging enabled", passed)
+        # PCI DSS Req 10: Diagnostics logging enabled
+        val = vm.get("diagnosticsProfile")
+        passed = bool(val)
+        record_check(results, rid, "10", "VM: Diagnostics logging enabled", passed,
+                     f"diagnosticsProfile_present={bool(val)}")
+
 
 def analyze_iam(data, results):
     for user in data.get("users", []):
