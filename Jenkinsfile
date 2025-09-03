@@ -22,7 +22,7 @@ pipeline {
                 }             
                     echo "Querying current Azure infrastructure state using Azure Resource Graph..."
                         sh 'chmod +x ./scripts/query_azure_infra.sh'
-                        // sh './scripts/query_azure_infra.sh'
+                         sh './scripts/query_azure_infra.sh'
                     }
                     // Archive the state file for later inspection if needed
                     archiveArtifacts artifacts: 'output/*.json'
@@ -70,6 +70,7 @@ pipeline {
     }        
     }
 }
+
 
 
 
