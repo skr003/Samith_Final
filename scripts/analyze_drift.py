@@ -13,6 +13,7 @@ def record_check(results, rid, pciReq, desc, passed):
         "pciReq": pciReq,
         "desc": desc,
         "status": "PASS" if passed else "FAIL"
+        "evidence": evidence
     })
 
 def analyze_storage(data, results):
