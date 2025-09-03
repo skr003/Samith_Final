@@ -1,5 +1,6 @@
 # scripts/analyze_drift.py
 import json
+from collections import OrderedDict
 
 def get_name_from_id(rid: str) -> str:
     """Extract the last part of the resourceId (actual resource name)."""
@@ -8,13 +9,13 @@ def get_name_from_id(rid: str) -> str:
     return rid.split("/")[-1]
 
 def record_check(results, rid, pciReq, desc, passed, evidence=""):
-    results.append({
-        "resourceName": get_name_from_id(rid),
-        "pciReq": pciReq,
-        "desc": desc,
-        "status": "PASS" if passed else "FAIL",
-        "evidence": evidence
-    })
+    results.append(OrderedDict([
+        ("pciReq", pciReq),
+        ("resourceName", get_name_from_id(rid)),
+        ("desc", desc),
+        ("status", "PASS" if passed else "FAIL"),
+        ("evidence", evidence)
+    ]))
 
 def analyze_storage(data, results):
     acc = data.get("account", {})
