@@ -34,6 +34,20 @@ done
 vms=$(az vm list -d --query '[].{id:id,name:name,resourceGroup:resourceGroup,location:location,properties:instanceView}' -o json)
 jq --argjson vms "$vms" '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
 
+vms=()
+for rg in $(az group list --query "[].name" -o tsv); do
+  for vm in $(az vm list -g $rg --query "[].name" -o tsv); do
+    details=$(az vm get-instance-view -g $rg -n $vm -o json)
+    vms+=("$details")
+  done
+done
+
+# Merge into azure.json
+jq --argjson vms "$(printf '%s\n' "${vms[@]}" | jq -s '.')" \
+   '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
+
+
+
 # --- Identity & Access Management (IAM) ---
 echo "Querying IAM roles and users..."
 roles=$(az role assignment list -o json)
