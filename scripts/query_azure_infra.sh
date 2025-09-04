@@ -31,23 +31,23 @@ done
 # --- Virtual Machines ---
 
 # Collect VM details with instance view (includes patch state)
-vms=$(az vm list -d --query '[].{id:id,name:name,resourceGroup:resourceGroup,location:location,properties:instanceView}' -o json)
-jq --argjson vms "$vms" '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
-
 vms=()
 for rg in $(az group list --query "[].name" -o tsv); do
   for vm in $(az vm list -g $rg --query "[].name" -o tsv); do
-    details=$(az vm get-instance-view -g $rg -n $vm -o json)
+    echo "Running patch assessment for VM: $vm in RG: $rg"
+    az vm assess-patches -g $rg -n $vm >/dev/null
+
+    # Fetch instance view with patch status after assessment
+    details=$(az vm get-instance-view -g $rg -n $vm \
+      --query "{id:id,name:name,resourceGroup:resourceGroup,osProfile:osProfile,instanceView:instanceView}" -o json)
+
     vms+=("$details")
   done
 done
 
-# Convert array to JSON
-printf '%s\n' "${vms[@]}" | jq -s '.' > tmp_vms.json
-
 # Merge into azure.json
+printf '%s\n' "${vms[@]}" | jq -s '.' > tmp_vms.json
 jq --slurpfile vms tmp_vms.json '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
-
 
 # --- Identity & Access Management (IAM) ---
 echo "Querying IAM roles and users..."
