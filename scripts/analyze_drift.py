@@ -53,10 +53,17 @@ def analyze_vms(data, results):
         rid = vm.get("id")
 
         # PCI DSS Req 6: Latest OS model/patch applied
-        val = vm.get("latestModelApplied", False)
-        passed = bool(val)
-        record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed,
-                     f"latestModelApplied={val}")
+        #val = vm.get("latestModelApplied", False)
+        #passed = bool(val)
+        #record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed,
+         #            f"latestModelApplied={val}")
+
+        patch_state = vm.get("properties", {}).get("patchStatus", {}).get("availablePatchSummary", {}).get("status")
+        val = patch_state if patch_state else "unknown"
+        passed = (val == "Succeeded")
+        evidence = f"patchAssessmentState={val}"
+        record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed, f"patchAssessmentState={val}")
+        
 
         # PCI DSS Req 1 & 7: NSG restrictions applied
         val = vm.get("networkProfile")
