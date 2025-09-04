@@ -42,10 +42,11 @@ for rg in $(az group list --query "[].name" -o tsv); do
   done
 done
 
-# Merge into azure.json
-jq --argjson vms "$(printf '%s\n' "${vms[@]}" | jq -s '.')" \
-   '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
+# Convert array to JSON
+printf '%s\n' "${vms[@]}" | jq -s '.' > tmp_vms.json
 
+# Merge into azure.json
+jq --slurpfile vms tmp_vms.json '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
 
 
 # --- Identity & Access Management (IAM) ---
