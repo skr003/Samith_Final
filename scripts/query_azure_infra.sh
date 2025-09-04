@@ -29,8 +29,9 @@ echo "$accounts_json" | jq -c '.[]' | while read account; do
 done
 
 # --- Virtual Machines ---
-echo "Querying virtual machines..."
-vms=$(az vm list -d -o json)
+
+# Collect VM details with instance view (includes patch state)
+vms=$(az vm list -d --query '[].{id:id,name:name,resourceGroup:resourceGroup,location:location,properties:instanceView}' -o json)
 jq --argjson vms "$vms" '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
 
 # --- Identity & Access Management (IAM) ---
