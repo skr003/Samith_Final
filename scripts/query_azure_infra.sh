@@ -7,8 +7,10 @@ mkdir -p $OUTPUT_DIR
 echo "[]" > $OUTPUT_DIR/azure.json
 
 # --- Storage Accounts ---
-echo "Querying storage accounts..."
-accounts_json=$(az storage account list --query "[].{id:id, name:name, resourceGroup:resourceGroup}" -o json)
+RESOURCE_GROUP="PCI-DSS_Taxonomy"
+
+echo "Querying storage accounts in resource group: $RESOURCE_GROUP..."
+accounts_json=$(az storage account list --resource-group "$RESOURCE_GROUP" --query "[].{id:id, name:name, resourceGroup:resourceGroup}" -o json)
 
 echo "$accounts_json" | jq -c '.[]' | while read account; do
     name=$(echo "$account" | jq -r '.name')
@@ -25,29 +27,26 @@ echo "$accounts_json" | jq -c '.[]' | while read account; do
       --argjson file "$file_service_details" \
       '{type:"storage", account:$acc, blobService:$blob, fileService:$file}')
 
-    jq --argjson details "$combined" '. += [$details]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
+    jq --argjson details "$combined" '. += [$details]' "$OUTPUT_DIR/azure.json" > tmp.$$.json && mv tmp.$$.json "$OUTPUT_DIR/azure.json"
 done
 
 # --- Virtual Machines ---
-
 # Collect VM details with instance view (includes patch state)
 vms=()
-for rg in $(az group list --query "[].name" -o tsv); do
-  for vm in $(az vm list -g $rg --query "[].name" -o tsv); do
-    echo "Running patch assessment for VM: $vm in RG: $rg"
-    az vm assess-patches -g $rg -n $vm >/dev/null
+for vm in $(az vm list -g "$RESOURCE_GROUP" --query "[].name" -o tsv); do
+  echo "Running patch assessment for VM: $vm in RG: $RESOURCE_GROUP"
+  az vm assess-patches -g "$RESOURCE_GROUP" -n "$vm" >/dev/null
 
-    # Fetch instance view with patch status after assessment
-    details=$(az vm get-instance-view -g $rg -n $vm \
-      --query "{id:id,name:name,resourceGroup:resourceGroup,osProfile:osProfile,instanceView:instanceView}" -o json)
+  # Fetch instance view with patch status after assessment
+  details=$(az vm get-instance-view -g "$RESOURCE_GROUP" -n "$vm" \
+    --query "{id:id,name:name,resourceGroup:resourceGroup,osProfile:osProfile,instanceView:instanceView}" -o json)
 
-    vms+=("$details")
-  done
+  vms+=("$details")
 done
 
 # Merge into azure.json
 printf '%s\n' "${vms[@]}" | jq -s '.' > tmp_vms.json
-jq --slurpfile vms tmp_vms.json '. += [{"type":"vm","vms":$vms}]' $OUTPUT_DIR/azure.json > tmp.$$.json && mv tmp.$$.json $OUTPUT_DIR/azure.json
+jq --slurpfile vms tmp_vms.json '. += [{"type":"vm","vms":$vms}]' "$OUTPUT_DIR/azure.json" > tmp.$$.json && mv tmp.$$.json "$OUTPUT_DIR/azure.json"
 
 # --- Identity & Access Management (IAM) ---
 echo "Querying IAM roles and users..."
