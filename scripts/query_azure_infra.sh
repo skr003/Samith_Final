@@ -32,6 +32,7 @@ done
 
 # --- Virtual Machines ---
 # Collect VM details with instance view (includes patch state)
+
 vms=()
 for vm in $(az vm list -g "$RESOURCE_GROUP" --query "[].name" -o tsv); do
   echo "Running patch assessment for VM: $vm in RG: $RESOURCE_GROUP"
@@ -44,9 +45,9 @@ for vm in $(az vm list -g "$RESOURCE_GROUP" --query "[].name" -o tsv); do
   vms+=("$details")
 done
 
-# Merge into azure.json
+# Merge into azure.json (ensure flat list, not nested)
 printf '%s\n' "${vms[@]}" | jq -s '.' > tmp_vms.json
-jq --slurpfile vms tmp_vms.json '. += [{"type":"vm","vms":$vms}]' "$OUTPUT_DIR/azure.json" > tmp.$$.json && mv tmp.$$.json "$OUTPUT_DIR/azure.json"
+jq --slurpfile vms tmp_vms.json '. += [{"type":"vm","vms":$vms[0]}]' "$OUTPUT_DIR/azure.json" > tmp.$$.json && mv tmp.$$.json "$OUTPUT_DIR/azure.json"
 
 # --- Identity & Access Management (IAM) ---
 echo "Querying IAM roles and users..."
