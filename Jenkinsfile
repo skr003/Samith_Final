@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    parameters {
-        string(name: 'STORAGE_ACCOUNT_KEY', defaultValue: 'SECRET', description: 'SECRET_KEY')
-    }
     stages {
         stage('Checkout Code') {
             steps {
@@ -51,27 +48,31 @@ pipeline {
 
     stage('Upload Reports to Azure Storage') {
       steps {
-        sh '''
-          # Set variables - REPLACE WITH YOUR ACTUAL STORAGE KEY
-          STORAGE_ACCOUNT="pcidssstorageaccount"
-          CONTAINER="reports"
-          STORAGE_ACCOUNT_KEY="QZFu7zzme1kOpmga0Tl425x1K7XvNcnmCIkmigqGZUyPLYM6aGZOELmBrAY8GyjWWpFFLEAqpy/x+AStFVXYUA=="
+            script {
+            withCredentials([
+                string(credentialsId: 'STORAGE_ACCOUNT_KEY', variable: 'STORAGE_ACCOUNT_KEY')
+                    ]) {
+                sh '''
+                # Set variables - REPLACE WITH YOUR ACTUAL STORAGE KEY
+                STORAGE_ACCOUNT="pcidssstorageaccount"
+                CONTAINER="reports"
           
-          # Check if files exist
-          if [ ! -f drift_report.json ]; then echo "Error: drift_report.json not found"; exit 1; fi
-          if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
+                # Check if files exist
+                if [ ! -f drift_report.json ]; then echo "Error: drift_report.json not found"; exit 1; fi
+                if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
 
-          # Upload to build-specific path
-          #az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/drift_report.json" --file drift_report.json --account-name $STORAGE_ACCOUNT --account-key "${params.STORAGE_ACCOUNT_KEY}"  --overwrite
-          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/drift_report.json" --file drift_report.json --account-name $STORAGE_ACCOUNT --account-key "${params.STORAGE_ACCOUNT_KEY}" --overwrite
-          az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "${params.STORAGE_ACCOUNT_KEY}" --overwrite
+                # Upload to build-specific path
+                az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/drift_report.json" --file drift_report.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+                az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
 
-          # Upload to 'latest' path
-          az storage blob upload --container-name $CONTAINER --name "latest/drift_report.json" --file drift_report.json --account-name $STORAGE_ACCOUNT --account-key "${params.STORAGE_ACCOUNT_KEY}" --overwrite
-          az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "${params.STORAGE_ACCOUNT_KEY}" --overwrite
-        '''
+                # Upload to 'latest' path
+                az storage blob upload --container-name $CONTAINER --name "latest/drift_report.json" --file drift_report.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+                az storage blob upload --container-name $CONTAINER --name "latest/azure.json" --file output/azure.json --account-name $STORAGE_ACCOUNT --account-key "$STORAGE_ACCOUNT_KEY" --overwrite
+                '''
+         }  
       }
     }        
     }
 }
+
 
