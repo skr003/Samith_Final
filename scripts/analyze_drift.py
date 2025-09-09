@@ -57,10 +57,15 @@ def analyze_vms(data, results):
     for vm in vms:
         rid = vm.get("id")
 
-        patch_state = vm.get("properties", {}).get("patchStatus", {}).get("availablePatchSummary", {}).get("status")
-        val = patch_state if patch_state else "unknown"
-        passed = (val == "Succeeded")
-        record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed, f"patchAssessmentState={val}")
+        # Check if VM is on latest Azure platform model
+        latest_model = vm.get("instanceView", {}).get("latestModelApplied")
+        record_check(results, rid, "6", "VM: Latest Azure platform model applied", bool(latest_model), f"latestModelApplied={latest_model}")
+
+        # Check if patch status succeeded
+        patch_status = vm.get("instanceView", {}).get("patchStatus", {}).get("availablePatchSummary", {})
+        patch_state = patch_status.get("status", "NotReported")
+        passed = (patch_state == "Succeeded" and patch_status.get("criticalAndSecurityPatchCount", 0) == 0)
+        record_check(results, rid, "6", "VM: Latest OS patches applied", passed, f"patchAssessmentState={patch_state}, criticalAndSecurityPatchCount={patch_status.get('criticalAndSecurityPatchCount', 'NA')}")
 
         val = vm.get("networkProfile")
         passed = bool(val)
