@@ -57,11 +57,13 @@ def analyze_vms(data, results):
     for vm in vms:
         rid = vm.get("id")
 
-        # Check if patch status succeeded
-        patch_status = vm.get("instanceView", {}).get("patchStatus", {}).get("availablePatchSummary", {})
+        patch_status = vm.get("patchStatus", {}).get("availablePatchSummary", {})
         patch_state = patch_status.get("status", "NotReported")
-        passed = (patch_state == "Succeeded" and patch_status.get("criticalAndSecurityPatchCount", 0) == 0)
-        record_check(results, rid, "6", "VM: Latest OS patches applied", passed, f"patchAssessmentState={patch_state}, criticalAndSecurityPatchCount={patch_status.get('criticalAndSecurityPatchCount', 'NA')}")
+        critical_count = patch_status.get("criticalAndSecurityPatchCount", "N/A")
+
+        passed = (patch_state == "Succeeded" and critical_count == 0)
+        evidence = f"patchAssessmentState={patch_state}, criticalAndSecurityPatchCount={critical_count}"
+        record_check(results, rid, "6", "VM: Latest OS patches applied", passed, evidence)
 
         val = vm.get("networkProfile")
         passed = bool(val)
