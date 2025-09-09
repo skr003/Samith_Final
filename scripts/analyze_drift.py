@@ -47,36 +47,31 @@ def analyze_storage(data, results):
     diag = acc.get("diagnostics_profile", {}).get("boot_diagnostics", {}).get("enabled")
     passed = diag is True
     record_check(results, rid, "10", "Storage: Boot diagnostics enabled", passed, f"boot_diagnostics={diag}")
-    
-def analyze_vms(data, results):
-    for vm in data.get("vms", []):
-        rid = vm.get("id")
 
-        # PCI DSS Req 6: Latest OS model/patch applied
-        #val = vm.get("latestModelApplied", False)
-        #passed = bool(val)
-        #record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed,
-         #            f"latestModelApplied={val}")
+def analyze_vms(data, results):
+    vms = data.get("vms", [])
+    # flatten if nested
+    if len(vms) == 1 and isinstance(vms[0], list):
+        vms = vms[0]
+
+    for vm in vms:
+        rid = vm.get("id")
 
         patch_state = vm.get("properties", {}).get("patchStatus", {}).get("availablePatchSummary", {}).get("status")
         val = patch_state if patch_state else "unknown"
         passed = (val == "Succeeded")
-        evidence = f"patchAssessmentState={val}"
         record_check(results, rid, "6", "VM: Latest OS model/patch applied", passed, f"patchAssessmentState={val}")
 
-        # PCI DSS Req 1 & 7: NSG restrictions applied
         val = vm.get("networkProfile")
         passed = bool(val)
         record_check(results, rid, "1,7", "VM: NSG restrictions applied", passed,
                      f"networkProfile_present={bool(val)}")
 
-        # PCI DSS Req 3: OS disk encryption enabled
         val = vm.get("storageProfile", {}).get("osDisk", {}).get("encryptionSettings")
         passed = bool(val)
         record_check(results, rid, "3", "VM: OS disk encryption enabled", passed,
                      f"encryptionSettings_present={bool(val)}")
 
-        # PCI DSS Req 10: Diagnostics logging enabled
         val = vm.get("diagnosticsProfile")
         passed = bool(val)
         record_check(results, rid, "10", "VM: Diagnostics logging enabled", passed,
