@@ -61,8 +61,6 @@ pipeline {
           if [ ! -f drift_report.json ]; then echo "Error: drift_report.json not found"; exit 1; fi
           if [ ! -f output/azure.json ]; then echo "Error: azure.json not found"; exit 1; fi
 
-          az storage container list --account-name pcidssstorageaccount -o table
-
           # Upload to build-specific path
           #az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/drift_report.json" --file drift_report.json --account-name $STORAGE_ACCOUNT --account-key "${params.STORAGE_ACCOUNT_KEY}"  --overwrite
           az storage blob upload --container-name $CONTAINER --name "builds/$BUILD_NUMBER/drift_report.json" --file drift_report.json --account-name $STORAGE_ACCOUNT --account-key "${params.STORAGE_ACCOUNT_KEY}" --overwrite
@@ -76,3 +74,4 @@ pipeline {
     }        
     }
 }
+
