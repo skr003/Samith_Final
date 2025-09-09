@@ -57,10 +57,6 @@ def analyze_vms(data, results):
     for vm in vms:
         rid = vm.get("id")
 
-        # Check if VM is on latest Azure platform model
-        latest_model = vm.get("instanceView", {}).get("latestModelApplied")
-        record_check(results, rid, "6", "VM: Latest Azure platform model applied", bool(latest_model), f"latestModelApplied={latest_model}")
-
         # Check if patch status succeeded
         patch_status = vm.get("instanceView", {}).get("patchStatus", {}).get("availablePatchSummary", {})
         patch_state = patch_status.get("status", "NotReported")
