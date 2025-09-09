@@ -38,9 +38,19 @@ for vm in $(az vm list -g "$RESOURCE_GROUP" --query "[].name" -o tsv); do
   echo "Running patch assessment for VM: $vm in RG: $RESOURCE_GROUP"
   az vm assess-patches -g "$RESOURCE_GROUP" -n "$vm" >/dev/null
 
-  # Fetch instance view with patch status after assessment
+  # Fetch instance view with platform model + patch status after assessment
   details=$(az vm get-instance-view -g "$RESOURCE_GROUP" -n "$vm" \
-    --query "{id:id,name:name,resourceGroup:resourceGroup,osProfile:osProfile,instanceView:instanceView}" -o json)
+    --query "{
+        id:id,
+        name:name,
+        resourceGroup:resourceGroup,
+        osProfile:osProfile,
+        latestModelApplied:instanceView.latestModelApplied,
+        patchStatus:instanceView.patchStatus,
+        networkProfile:networkProfile,
+        storageProfile:storageProfile,
+        diagnosticsProfile:diagnosticsProfile
+    }" -o json)
 
   vms+=("$details")
 done
