@@ -50,9 +50,9 @@ pipeline {
       steps {
         sh '''
           # Set variables - REPLACE WITH YOUR ACTUAL STORAGE KEY
-          STORAGE_ACCOUNT="reportingpcidss25655"
+          STORAGE_ACCOUNT="pcidssstorageaccount"
           CONTAINER="reports"
-          STORAGE_ACCOUNT_KEY="pUsU+U4ZVzYx5jVJAyiEXeVIhgel/4iGxqYl+cY1WSJI5NKsvlbYN5Si9NXHr8TKQTB92BHvTH64+AStjLZLuQ=="
+          STORAGE_ACCOUNT_KEY="QZFu7zzme1kOpmga0Tl425x1K7XvNcnmCIkmigqGZUyPLYM6aGZOELmBrAY8GyjWWpFFLEAqpy/x+AStFVXYUA=="
           
           # Check if files exist
           if [ ! -f drift_report.json ]; then echo "Error: drift_report.json not found"; exit 1; fi
@@ -70,6 +70,7 @@ pipeline {
     }        
     }
 }
+
 
 
 
